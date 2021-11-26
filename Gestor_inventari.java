@@ -1,3 +1,12 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -10,7 +19,7 @@ public class Gestor_inventari {
     static Scanner teclat = new Scanner(System.in);
     static Connection connexioBD;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         try {
             connexioBD();
@@ -32,7 +41,7 @@ public class Gestor_inventari {
 
     }
 
-    static void menu() throws SQLException {
+    static void menu() throws SQLException, IOException {
         boolean sortir = false;
         do {
 
@@ -198,7 +207,7 @@ public class Gestor_inventari {
         System.out.println("Vols modificar el nom? (si/no)");
         String resp = teclat.nextLine();
 
-        if (resp.equals("si")) {
+        if (resp.equalsIgnoreCase("si")) {
             System.out.println("Nom:");
             nom = teclat.nextLine();
         }
@@ -206,7 +215,7 @@ public class Gestor_inventari {
         System.out.println("Vols modificar el material? (si/no)");
         resp = teclat.nextLine();
 
-        if (resp.equals("si")) {
+        if (resp.equalsIgnoreCase("si")) {
             System.out.println("Material:");
             mat = teclat.nextLine();
         }
@@ -214,7 +223,7 @@ public class Gestor_inventari {
         System.out.println("Vols modificar l'estoc? (si/no)");
         resp = teclat.nextLine();
 
-        if (resp.equals("si")) {
+        if (resp.equalsIgnoreCase("si")) {
             System.out.println("Estoc:");
             estoc = teclat.nextInt();
             teclat.nextLine();
@@ -223,7 +232,7 @@ public class Gestor_inventari {
         System.out.println("Vols modificar la categortia? (si/no)");
         resp = teclat.nextLine();
 
-        if (resp.equals("si")) {
+        if (resp.equalsIgnoreCase("si")) {
             System.out.println("Categoria:");
             codi_cat = teclat.nextInt();
         }
@@ -269,7 +278,61 @@ public class Gestor_inventari {
         sentencia.executeUpdate();
     }
 
-    static void actualitzarStok() {
+    static void actualitzarStok() throws IOException, SQLException {
+        File fitxer = new File("files/ENTRADES PENDENTS");
+        fitxer.mkdirs();
+        File fitxer2 = new File("files/ENTRADES PROCESSADES");
+        fitxer2.mkdirs();
+
+        if (fitxer.isDirectory()) {
+            File[] fitxers = fitxer.listFiles();
+
+            // Llistar dels fitxers
+            for (int i = 0; i < fitxers.length; i++) {
+                System.out.println(fitxers[i].getName());
+                actualitzarFitxerBD(fitxers[i]);
+                moureFitxer(fitxers[i]);
+            }
+
+        }
+
+    }
+
+    static void actualitzarFitxerBD(File fitxer) throws IOException, SQLException {
+        // Llegeix caràcter a caràcter
+        FileReader reader = new FileReader(fitxer);
+        // Llegeix linea a linea
+        BufferedReader buffer = new BufferedReader(reader);
+
+        String linea;
+        while ((linea = buffer.readLine()) != null) {
+            System.out.println(linea);
+
+            int posSep = linea.indexOf(":");
+            int codiprod = Integer.parseInt(linea.substring(0, posSep));
+            int estoc = Integer.parseInt(linea.substring(posSep + 1));
+
+            String modifica = "UPDATE productes SET estoc=estoc+? WHERE codi=?;";
+            PreparedStatement sentencia = connexioBD.prepareStatement(modifica);
+
+            sentencia.setInt(1, estoc);
+            sentencia.setInt(2, codiprod);
+
+            sentencia.executeUpdate();
+
+        }
+
+        buffer.close();
+        reader.close();
+    }
+
+    static void moureFitxer(File fitxers) throws IOException {
+        FileSystem sistemaFitxers = FileSystems.getDefault();
+        Path origen = sistemaFitxers.getPath("files/ENTRADES PENDENTS/" + fitxers.getName());
+        Path desti = sistemaFitxers.getPath("files/ENTRADES PROCESSADES/" + fitxers.getName());
+
+        Files.move(origen, desti, StandardCopyOption.REPLACE_EXISTING);
+        System.out.println("S'ha mogut a PROCESSATS el fitxer: " + fitxers.getName());
 
     }
 
